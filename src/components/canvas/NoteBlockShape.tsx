@@ -5,13 +5,15 @@ import {
   resizeBox,
 } from '@tldraw/editor'
 import type { TLBaseShape } from '@tldraw/tlschema'
+import { NoteEditor } from '@/components/editor/NoteEditor'
+import { useCallback } from 'react'
 
 export type NoteBlockShape = TLBaseShape<
   'note-block',
   {
     w: number
     h: number
-    content: string
+    content: string // JSON string of BlockNote blocks
     title: string
   }
 >
@@ -38,6 +40,15 @@ export class NoteBlockShapeUtil extends BaseBoxShapeUtil<NoteBlockShape> {
   component(shape: NoteBlockShape) {
     const isEditing = this.editor.getEditingShapeId() === shape.id
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const handleChange = useCallback((content: string) => {
+      this.editor.updateShape<NoteBlockShape>({
+        id: shape.id,
+        type: 'note-block',
+        props: { content },
+      })
+    }, [shape.id])
+
     return (
       <HTMLContainer
         id={shape.id}
@@ -58,28 +69,12 @@ export class NoteBlockShapeUtil extends BaseBoxShapeUtil<NoteBlockShape> {
               {shape.props.title}
             </span>
           </div>
-          <div
-            className="flex-1 p-3 overflow-auto text-sm text-foreground"
-            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-          >
-            {isEditing ? (
-              <textarea
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-sm"
-                defaultValue={shape.props.content}
-                autoFocus
-                onChange={(e) => {
-                  this.editor.updateShape<NoteBlockShape>({
-                    id: shape.id,
-                    type: 'note-block',
-                    props: { content: e.target.value },
-                  })
-                }}
-              />
-            ) : (
-              <div className="opacity-80">
-                {shape.props.content || 'Double-click to edit...'}
-              </div>
-            )}
+          <div className="flex-1 overflow-auto">
+            <NoteEditor
+              initialContent={shape.props.content}
+              isEditing={isEditing}
+              onChange={handleChange}
+            />
           </div>
         </div>
       </HTMLContainer>

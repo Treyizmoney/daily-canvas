@@ -5,13 +5,15 @@ import 'tldraw/tldraw.css'
 import { NoteBlockShapeUtil, type NoteBlockShape } from './NoteBlockShape'
 import { AiResponseShapeUtil, type AiResponseShape } from './AiResponseShape'
 import { LinkCardShapeUtil } from './LinkCardShape'
+import { PdfEmbedShapeUtil } from './PdfEmbedShape'
 import { askAi } from '@/lib/ai'
+import { populateDayHub } from '@/lib/dayHub'
 import { storage } from '@/lib/storage'
 import type { CanvasMeta } from '@/types/canvas'
 import { Button } from '@/components/ui/button'
-import { StickyNote, Link, Sparkles } from 'lucide-react'
+import { StickyNote, Link, Sparkles, FileText } from 'lucide-react'
 
-const customShapeUtils = [NoteBlockShapeUtil, AiResponseShapeUtil, LinkCardShapeUtil]
+const customShapeUtils = [NoteBlockShapeUtil, AiResponseShapeUtil, LinkCardShapeUtil, PdfEmbedShapeUtil]
 
 interface CanvasWorkspaceProps {
   canvasId: string
@@ -37,7 +39,12 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
         // Empty canvas, that's fine
       }
     }
-  }, [initialState])
+
+    // If this is a new day canvas, populate with default layout
+    if (meta.type === 'day' && editor.getCurrentPageShapes().length === 0) {
+      populateDayHub(editor, meta.title)
+    }
+  }, [initialState, meta.type, meta.title])
 
   // Auto-save on changes (debounced)
   useEffect(() => {
@@ -101,6 +108,28 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
         url: '',
         title: '',
         description: '',
+      },
+    })
+  }, [])
+
+  const addPdfEmbed = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const center = editor.getViewportScreenCenter()
+    const point = editor.screenToPage(center)
+
+    editor.createShape({
+      id: createShapeId(),
+      type: 'pdf-embed',
+      x: point.x - 250,
+      y: point.y - 325,
+      props: {
+        w: 500,
+        h: 650,
+        filePath: '',
+        currentPage: 1,
+        totalPages: 0,
       },
     })
   }, [])
@@ -183,6 +212,10 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
         <Button variant="ghost" size="sm" onClick={addLinkCard} className="h-7 text-xs gap-1">
           <Link className="h-3 w-3" />
           Link
+        </Button>
+        <Button variant="ghost" size="sm" onClick={addPdfEmbed} className="h-7 text-xs gap-1">
+          <FileText className="h-3 w-3" />
+          PDF
         </Button>
         <div className="h-4 w-px bg-border" />
         {showAiInput ? (

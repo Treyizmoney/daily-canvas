@@ -6,6 +6,7 @@ import { toDateString, getWeekDays } from '@/lib/dates'
 import type { CanvasData } from '@/types/canvas'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Settings } from '@/components/Settings'
 
 type View = 'calendar' | 'canvas'
 
@@ -89,6 +90,12 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-background dark">
+      {/* App header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+        <h1 className="text-sm font-semibold tracking-tight">Daily Canvas</h1>
+        <Settings />
+      </div>
+
       <WeekView
         selectedDate={selectedDate}
         canvasDates={canvasDates}
