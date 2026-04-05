@@ -40,6 +40,16 @@ export default function App() {
     }
   }, [selectedDate])
 
+  // Listen for canvas-navigate events from CanvasLink shapes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { canvasId } = (e as CustomEvent).detail
+      openCanvas(canvasId)
+    }
+    window.addEventListener('canvas-navigate', handler)
+    return () => window.removeEventListener('canvas-navigate', handler)
+  }, [openCanvas])
+
   useEffect(() => {
     refreshData()
   }, [refreshData])
@@ -150,6 +160,7 @@ export default function App() {
             canvasId={activeCanvas.meta.id}
             meta={activeCanvas.meta}
             initialState={activeCanvas.tldraw_state}
+            onRename={(newTitle) => renameCanvas(activeCanvas.meta.id, newTitle)}
           />
         ) : (
           <>

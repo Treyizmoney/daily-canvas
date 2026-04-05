@@ -9,6 +9,7 @@ import {
   BookOpen,
   Trash2,
   Pencil,
+  Sun,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -87,6 +88,20 @@ export function Sidebar({
         <Button variant="ghost" size="icon" onClick={onToggle} className="h-6 w-6">
           <PanelLeftClose className="h-3.5 w-3.5" />
         </Button>
+      </div>
+
+      {/* Today button */}
+      <div className="px-2 py-2">
+        <button
+          onClick={() => {
+            const today = new Date().toISOString().split('T')[0]
+            onOpenDay(today)
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors text-xs font-medium"
+        >
+          <Sun className="h-3.5 w-3.5 text-primary" />
+          Open Today
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto py-2">

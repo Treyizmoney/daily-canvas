@@ -6,25 +6,29 @@ import { NoteBlockShapeUtil, type NoteBlockShape } from './NoteBlockShape'
 import { AiResponseShapeUtil, type AiResponseShape } from './AiResponseShape'
 import { LinkCardShapeUtil } from './LinkCardShape'
 import { PdfEmbedShapeUtil } from './PdfEmbedShape'
+import { CanvasLinkShapeUtil } from './CanvasLinkShape'
 import { askAi } from '@/lib/ai'
 import { populateDayHub } from '@/lib/dayHub'
 import { storage } from '@/lib/storage'
 import type { CanvasMeta } from '@/types/canvas'
 import { Button } from '@/components/ui/button'
-import { StickyNote, Link, Sparkles, FileText } from 'lucide-react'
+import { StickyNote, Link, Sparkles, FileText, ArrowRightLeft } from 'lucide-react'
 
-const customShapeUtils = [NoteBlockShapeUtil, AiResponseShapeUtil, LinkCardShapeUtil, PdfEmbedShapeUtil]
+const customShapeUtils = [NoteBlockShapeUtil, AiResponseShapeUtil, LinkCardShapeUtil, PdfEmbedShapeUtil, CanvasLinkShapeUtil]
 
 interface CanvasWorkspaceProps {
   canvasId: string
   meta: CanvasMeta
   initialState: Record<string, unknown>
+  onRename?: (newTitle: string) => void
 }
 
-export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspaceProps) {
+export function CanvasWorkspace({ canvasId, meta, initialState, onRename }: CanvasWorkspaceProps) {
   const editorRef = useRef<Editor | null>(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [showAiInput, setShowAiInput] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleValue, setTitleValue] = useState(meta.title)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleMount = useCallback((editor: Editor) => {
@@ -134,6 +138,31 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
     })
   }, [])
 
+  const addCanvasLink = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const center = editor.getViewportScreenCenter()
+    const point = editor.screenToPage(center)
+
+    const shapeId = createShapeId()
+    editor.createShape({
+      id: shapeId,
+      type: 'canvas-link',
+      x: point.x - 140,
+      y: point.y - 35,
+      props: {
+        w: 280,
+        h: 70,
+        targetCanvasId: '',
+        targetTitle: '',
+        targetType: '',
+      },
+    })
+    // Start editing immediately so user can pick a canvas
+    editor.setEditingShape(shapeId)
+  }, [])
+
   const triggerAi = useCallback(() => {
     const editor = editorRef.current
     if (!editor || !aiPrompt.trim()) return
@@ -203,7 +232,36 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
     <div className="flex flex-col h-full">
       {/* Canvas toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80 backdrop-blur-sm z-10">
-        <span className="text-sm font-medium text-foreground mr-2">{meta.title}</span>
+        {isEditingTitle ? (
+          <input
+            className="text-sm font-medium bg-muted border border-primary rounded px-2 py-0.5 outline-none w-48 mr-2"
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onRename?.(titleValue)
+                setIsEditingTitle(false)
+              }
+              if (e.key === 'Escape') {
+                setTitleValue(meta.title)
+                setIsEditingTitle(false)
+              }
+            }}
+            onBlur={() => {
+              onRename?.(titleValue)
+              setIsEditingTitle(false)
+            }}
+            autoFocus
+          />
+        ) : (
+          <button
+            onClick={() => meta.type !== 'day' && setIsEditingTitle(true)}
+            className="text-sm font-medium text-foreground mr-2 hover:text-primary transition-colors"
+            title={meta.type !== 'day' ? 'Click to rename' : undefined}
+          >
+            {meta.title}
+          </button>
+        )}
         <div className="h-4 w-px bg-border" />
         <Button variant="ghost" size="sm" onClick={addNoteBlock} className="h-7 text-xs gap-1">
           <StickyNote className="h-3 w-3" />
@@ -216,6 +274,10 @@ export function CanvasWorkspace({ canvasId, meta, initialState }: CanvasWorkspac
         <Button variant="ghost" size="sm" onClick={addPdfEmbed} className="h-7 text-xs gap-1">
           <FileText className="h-3 w-3" />
           PDF
+        </Button>
+        <Button variant="ghost" size="sm" onClick={addCanvasLink} className="h-7 text-xs gap-1">
+          <ArrowRightLeft className="h-3 w-3" />
+          Canvas Link
         </Button>
         <div className="h-4 w-px bg-border" />
         {showAiInput ? (
