@@ -1,26 +1,27 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { WeekView } from '@/components/calendar/WeekView'
 import { CanvasWorkspace } from '@/components/canvas/CanvasWorkspace'
+import { Sidebar } from '@/components/Sidebar'
 import { storage } from '@/lib/storage'
 import { toDateString, getWeekDays, nextWeek, prevWeek, parseISO } from '@/lib/dates'
 import type { CanvasData } from '@/types/canvas'
-import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Settings } from '@/components/Settings'
 import { NewCanvasDialog } from '@/components/NewCanvasDialog'
 import { SearchBar } from '@/components/SearchBar'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
-type View = 'calendar' | 'canvas'
+type View = 'home' | 'canvas'
 
 export default function App() {
-  const [view, setView] = useState<View>('calendar')
+  const [view, setView] = useState<View>('home')
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()))
   const [canvasDates, setCanvasDates] = useState<Set<string>>(new Set())
   const [activeCanvas, setActiveCanvas] = useState<CanvasData | null>(null)
   const [recentCanvases, setRecentCanvases] = useState<{ id: string; title: string; type: string }[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const refreshWeekData = useCallback(async () => {
+  const refreshData = useCallback(async () => {
     try {
       const weekDays = getWeekDays(new Date(selectedDate))
       const start = toDateString(weekDays[0])
@@ -35,24 +36,25 @@ export default function App() {
         type: c.type,
       })))
     } catch {
-      // Storage not available (dev mode without Tauri backend)
+      // Storage not available
     }
   }, [selectedDate])
 
   useEffect(() => {
-    refreshWeekData()
-  }, [refreshWeekData])
+    refreshData()
+  }, [refreshData])
 
   const openDay = useCallback(async (date: string) => {
     try {
       const canvas = await storage.getOrCreateDayCanvas(date)
       setActiveCanvas(canvas)
+      setSelectedDate(date)
       setView('canvas')
-      refreshWeekData()
+      refreshData()
     } catch (err) {
       console.error('Failed to open day canvas:', err)
     }
-  }, [refreshWeekData])
+  }, [refreshData])
 
   const openCanvas = useCallback(async (id: string) => {
     try {
@@ -73,139 +75,163 @@ export default function App() {
       if (canvas) {
         setActiveCanvas(canvas)
         setView('canvas')
-        refreshWeekData()
+        refreshData()
       }
     } catch (err) {
       console.error('Failed to create canvas:', err)
     }
-  }, [refreshWeekData])
+  }, [refreshData])
 
-  const goBack = useCallback(() => {
-    setView('calendar')
+  const deleteCanvas = useCallback(async (id: string) => {
+    try {
+      await storage.deleteCanvas(id)
+      if (activeCanvas?.meta.id === id) {
+        setActiveCanvas(null)
+        setView('home')
+      }
+      refreshData()
+    } catch (err) {
+      console.error('Failed to delete canvas:', err)
+    }
+  }, [activeCanvas, refreshData])
+
+  const renameCanvas = useCallback(async (id: string, newTitle: string) => {
+    try {
+      await storage.renameCanvas(id, newTitle)
+      refreshData()
+    } catch (err) {
+      console.error('Failed to rename canvas:', err)
+    }
+  }, [refreshData])
+
+  const goHome = useCallback(() => {
+    setView('home')
     setActiveCanvas(null)
-    refreshWeekData()
-  }, [refreshWeekData])
+    refreshData()
+  }, [refreshData])
 
   // Keyboard shortcuts
   const shortcuts = useMemo(() => ({
     onGoBack: () => {
-      if (view === 'canvas') goBack()
+      if (view === 'canvas') goHome()
     },
     onNavigatePrev: () => {
-      if (view === 'calendar') {
+      if (view === 'home') {
         setSelectedDate(toDateString(prevWeek(parseISO(selectedDate))))
       }
     },
     onNavigateNext: () => {
-      if (view === 'calendar') {
+      if (view === 'home') {
         setSelectedDate(toDateString(nextWeek(parseISO(selectedDate))))
       }
     },
-  }), [view, goBack, selectedDate])
+  }), [view, goHome, selectedDate])
 
   useKeyboardShortcuts(shortcuts)
 
-  if (view === 'canvas' && activeCanvas) {
-    return (
-      <div className="h-full flex flex-col bg-background dark">
-        <div className="flex items-center gap-2 px-2 py-1 bg-card border-b border-border">
-          <Button variant="ghost" size="icon" onClick={goBack} className="h-7 w-7">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {activeCanvas.meta.type === 'day' ? 'Day Canvas' : activeCanvas.meta.title}
-          </span>
-        </div>
-        <div className="flex-1">
+  return (
+    <div className="h-full flex bg-background dark">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        activeCanvasId={activeCanvas?.meta.id ?? null}
+        onOpenCanvas={openCanvas}
+        onOpenDay={openDay}
+        onGoHome={goHome}
+        onDeleteCanvas={deleteCanvas}
+        onRenameCanvas={renameCanvas}
+      />
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {view === 'canvas' && activeCanvas ? (
           <CanvasWorkspace
             canvasId={activeCanvas.meta.id}
             meta={activeCanvas.meta}
             initialState={activeCanvas.tldraw_state}
           />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="h-full flex flex-col bg-background dark">
-      {/* App header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
-        <h1 className="text-sm font-semibold tracking-tight">Daily Canvas</h1>
-        <div className="flex items-center gap-2">
-          <SearchBar onOpenCanvas={openCanvas} />
-          <NewCanvasDialog onCreateCanvas={createCanvas} />
-          <Settings />
-        </div>
-      </div>
-
-      <WeekView
-        selectedDate={selectedDate}
-        canvasDates={canvasDates}
-        onSelectDate={setSelectedDate}
-        onOpenDay={openDay}
-      />
-
-      <div className="flex-1 flex flex-col p-6 overflow-auto">
-        <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
-          {/* Open day button */}
-          <button
-            onClick={() => openDay(selectedDate)}
-            className="group w-full p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {canvasDates.has(selectedDate)
-                    ? 'Open your canvas for this day'
-                    : 'Start a new canvas for this day'}
-                </p>
-              </div>
-              <div className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">
-                →
+        ) : (
+          <>
+            {/* Home header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+              <h1 className="text-sm font-semibold tracking-tight">Daily Canvas</h1>
+              <div className="flex items-center gap-2">
+                <SearchBar onOpenCanvas={openCanvas} />
+                <NewCanvasDialog onCreateCanvas={createCanvas} />
+                <Settings />
               </div>
             </div>
-          </button>
 
-          {/* Recent project canvases */}
-          {recentCanvases.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">Recent Canvases</h4>
-              <div className="flex flex-col gap-2">
-                {recentCanvases.map((canvas) => (
-                  <button
-                    key={canvas.id}
-                    onClick={() => openCanvas(canvas.id)}
-                    className="p-3 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        canvas.type === 'project' ? 'bg-blue-500' : 'bg-emerald-500'
-                      }`} />
-                      <span className="text-sm font-medium">{canvas.title}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">{canvas.type}</span>
+            <WeekView
+              selectedDate={selectedDate}
+              canvasDates={canvasDates}
+              onSelectDate={setSelectedDate}
+              onOpenDay={openDay}
+            />
+
+            <div className="flex-1 flex flex-col p-6 overflow-auto">
+              <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
+                {/* Open day button */}
+                <button
+                  onClick={() => openDay(selectedDate)}
+                  className="group w-full p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {canvasDates.has(selectedDate)
+                          ? 'Open your canvas for this day'
+                          : 'Start a new canvas for this day'}
+                      </p>
                     </div>
-                  </button>
-                ))}
+                    <div className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">
+                      →
+                    </div>
+                  </div>
+                </button>
+
+                {/* Recent project canvases */}
+                {recentCanvases.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Recent Canvases</h4>
+                    <div className="flex flex-col gap-2">
+                      {recentCanvases.map((canvas) => (
+                        <button
+                          key={canvas.id}
+                          onClick={() => openCanvas(canvas.id)}
+                          className="p-3 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${
+                              canvas.type === 'project' ? 'bg-blue-500' : 'bg-emerald-500'
+                            }`} />
+                            <span className="text-sm font-medium">{canvas.title}</span>
+                            <span className="text-xs text-muted-foreground ml-auto">{canvas.type}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {recentCanvases.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">No project canvases yet.</p>
+                    <p className="text-xs mt-1">Click "New Canvas" to create one, or open a day to get started.</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-
-          {/* Empty state when no canvases exist */}
-          {recentCanvases.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No project canvases yet.</p>
-              <p className="text-xs mt-1">Click "New Canvas" to create one, or open a day to get started.</p>
-            </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   )

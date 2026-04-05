@@ -196,6 +196,15 @@ impl StorageEngine {
         Ok(canvases)
     }
 
+    pub fn rename(&self, id: &str, new_title: &str) -> Result<(), String> {
+        let db = self.db.lock().map_err(|e| e.to_string())?;
+        db.execute(
+            "UPDATE canvases SET title = ?1, modified_at = datetime('now') WHERE id = ?2",
+            params![new_title, id],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn delete_canvas(&self, id: &str) -> Result<(), String> {
         let db = self.db.lock().map_err(|e| e.to_string())?;
         db.execute("DELETE FROM canvases WHERE id = ?1", params![id])

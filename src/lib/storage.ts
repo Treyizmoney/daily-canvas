@@ -30,6 +30,10 @@ export const storage = {
     await invoke('delete_canvas', { id })
   },
 
+  async renameCanvas(id: string, newTitle: string): Promise<void> {
+    await invoke('rename_canvas', { id, newTitle })
+  },
+
   async searchCanvases(query: string): Promise<CanvasMeta[]> {
     return invoke('search_canvases', { query })
   },

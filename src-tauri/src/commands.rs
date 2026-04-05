@@ -97,6 +97,15 @@ pub fn delete_canvas(
 }
 
 #[tauri::command]
+pub fn rename_canvas(
+    storage: State<StorageEngine>,
+    id: String,
+    new_title: String,
+) -> Result<(), String> {
+    storage.rename(&id, &new_title)
+}
+
+#[tauri::command]
 pub fn search_canvases(
     storage: State<StorageEngine>,
     query: String,
