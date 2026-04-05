@@ -97,6 +97,29 @@ pub fn delete_canvas(
 }
 
 #[tauri::command]
+pub fn duplicate_canvas(
+    storage: State<StorageEngine>,
+    id: String,
+) -> Result<CanvasMeta, String> {
+    let source = storage.load_canvas(&id)?
+        .ok_or_else(|| format!("Canvas {} not found", id))?;
+
+    let now = Utc::now().to_rfc3339();
+    let new_meta = CanvasMeta {
+        id: Uuid::new_v4().to_string(),
+        title: format!("{} (copy)", source.meta.title),
+        canvas_type: source.meta.canvas_type,
+        date: None, // Duplicates are never day canvases
+        created_at: now.clone(),
+        modified_at: now,
+        tags: source.meta.tags,
+    };
+
+    storage.save_canvas(&new_meta, &source.tldraw_state)?;
+    Ok(new_meta)
+}
+
+#[tauri::command]
 pub fn rename_canvas(
     storage: State<StorageEngine>,
     id: String,

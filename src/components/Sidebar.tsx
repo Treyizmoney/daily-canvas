@@ -10,6 +10,7 @@ import {
   Trash2,
   Pencil,
   Sun,
+  Copy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,7 @@ interface SidebarProps {
   onGoHome: () => void
   onDeleteCanvas: (id: string) => void
   onRenameCanvas: (id: string, newTitle: string) => void
+  onDuplicateCanvas: (id: string) => void
 }
 
 export function Sidebar({
@@ -34,6 +36,7 @@ export function Sidebar({
   onGoHome,
   onDeleteCanvas,
   onRenameCanvas,
+  onDuplicateCanvas,
 }: SidebarProps) {
   const [dayCanvases, setDayCanvases] = useState<CanvasMeta[]>([])
   const [projectCanvases, setProjectCanvases] = useState<CanvasMeta[]>([])
@@ -130,6 +133,7 @@ export function Sidebar({
               onClick={() => onOpenCanvas(c.id)}
               onDelete={() => onDeleteCanvas(c.id)}
               onRename={() => startRename(c)}
+              onDuplicate={() => onDuplicateCanvas(c.id)}
               editMode={editingId === c.id}
               editValue={editTitle}
               onEditChange={setEditTitle}
@@ -151,6 +155,7 @@ export function Sidebar({
               onClick={() => onOpenCanvas(c.id)}
               onDelete={() => onDeleteCanvas(c.id)}
               onRename={() => startRename(c)}
+              onDuplicate={() => onDuplicateCanvas(c.id)}
               editMode={editingId === c.id}
               editValue={editTitle}
               onEditChange={setEditTitle}
@@ -194,6 +199,7 @@ function SidebarItem({
   onClick,
   onDelete,
   onRename,
+  onDuplicate,
   editMode,
   editValue,
   onEditChange,
@@ -204,6 +210,7 @@ function SidebarItem({
   onClick: () => void
   onDelete?: () => void
   onRename?: () => void
+  onDuplicate?: () => void
   editMode?: boolean
   editValue?: string
   onEditChange?: (v: string) => void
@@ -246,12 +253,22 @@ function SidebarItem({
       >
         {label}
       </button>
-      {showActions && (onDelete || onRename) && (
+      {showActions && (onDelete || onRename || onDuplicate) && (
         <div className="absolute right-1 top-0.5 flex items-center gap-0.5">
+          {onDuplicate && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDuplicate() }}
+              className="p-0.5 rounded hover:bg-muted"
+              title="Duplicate"
+            >
+              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+            </button>
+          )}
           {onRename && (
             <button
               onClick={(e) => { e.stopPropagation(); onRename() }}
               className="p-0.5 rounded hover:bg-muted"
+              title="Rename"
             >
               <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
             </button>

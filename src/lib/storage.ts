@@ -34,6 +34,10 @@ export const storage = {
     await invoke('rename_canvas', { id, newTitle })
   },
 
+  async duplicateCanvas(id: string): Promise<CanvasMeta> {
+    return invoke('duplicate_canvas', { id })
+  },
+
   async searchCanvases(query: string): Promise<CanvasMeta[]> {
     return invoke('search_canvases', { query })
   },

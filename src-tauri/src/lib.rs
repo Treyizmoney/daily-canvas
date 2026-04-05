@@ -35,6 +35,7 @@ pub fn run() {
             commands::list_canvases_by_date,
             commands::list_recent_canvases,
             commands::delete_canvas,
+            commands::duplicate_canvas,
             commands::rename_canvas,
             commands::search_canvases,
         ])

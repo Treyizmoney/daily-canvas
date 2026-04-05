@@ -8,22 +8,38 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 
 interface NewCanvasDialogProps {
-  onCreateCanvas: (title: string, type: 'project' | 'topic') => void
+  onCreateCanvas: (title: string, type: 'project' | 'topic', tags: string[]) => void
 }
 
 export function NewCanvasDialog({ onCreateCanvas }: NewCanvasDialogProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [type, setType] = useState<'project' | 'topic'>('project')
+  const [tagInput, setTagInput] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+
+  const addTag = () => {
+    const tag = tagInput.trim().toLowerCase()
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag])
+      setTagInput('')
+    }
+  }
+
+  const removeTag = (tag: string) => {
+    setTags(tags.filter((t) => t !== tag))
+  }
 
   const handleCreate = () => {
     if (!title.trim()) return
-    onCreateCanvas(title.trim(), type)
+    onCreateCanvas(title.trim(), type, tags)
     setTitle('')
     setType('project')
+    setTags([])
+    setTagInput('')
     setOpen(false)
   }
 
@@ -62,7 +78,7 @@ export function NewCanvasDialog({ onCreateCanvas }: NewCanvasDialogProps) {
                 }`}
               >
                 <div className="font-medium">Project</div>
-                <div className="text-xs opacity-70 mt-0.5">Ongoing work (DayEdge, LLC)</div>
+                <div className="text-xs opacity-70 mt-0.5">Ongoing work</div>
               </button>
               <button
                 onClick={() => setType('topic')}
@@ -73,9 +89,42 @@ export function NewCanvasDialog({ onCreateCanvas }: NewCanvasDialogProps) {
                 }`}
               >
                 <div className="font-medium">Topic</div>
-                <div className="text-xs opacity-70 mt-0.5">Learning / reference (courses)</div>
+                <div className="text-xs opacity-70 mt-0.5">Learning / reference</div>
               </button>
             </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Tags</label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="Add a tag..."
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addTag() }
+                  if (e.key === ',' || e.key === ' ') { e.preventDefault(); addTag() }
+                }}
+              />
+              <Button variant="ghost" size="sm" onClick={addTag} className="h-8">
+                Add
+              </Button>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/15 text-primary border border-primary/20"
+                  >
+                    {tag}
+                    <button onClick={() => removeTag(tag)} className="hover:text-destructive">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <Button onClick={handleCreate} disabled={!title.trim()} className="w-full">
             Create Canvas

@@ -46,7 +46,7 @@ export function CanvasWorkspace({ canvasId, meta, initialState, onRename }: Canv
 
     // If this is a new day canvas, populate with default layout
     if (meta.type === 'day' && editor.getCurrentPageShapes().length === 0) {
-      populateDayHub(editor, meta.title)
+      populateDayHub(editor, meta.title).catch(console.error)
     }
   }, [initialState, meta.type, meta.title])
 

@@ -78,9 +78,9 @@ export default function App() {
     }
   }, [])
 
-  const createCanvas = useCallback(async (title: string, type: 'project' | 'topic') => {
+  const createCanvas = useCallback(async (title: string, type: 'project' | 'topic', tags: string[] = []) => {
     try {
-      const meta = await storage.createCanvas(title, type, [])
+      const meta = await storage.createCanvas(title, type, tags)
       const canvas = await storage.loadCanvas(meta.id)
       if (canvas) {
         setActiveCanvas(canvas)
@@ -104,6 +104,20 @@ export default function App() {
       console.error('Failed to delete canvas:', err)
     }
   }, [activeCanvas, refreshData])
+
+  const duplicateCanvas = useCallback(async (id: string) => {
+    try {
+      const newMeta = await storage.duplicateCanvas(id)
+      const canvas = await storage.loadCanvas(newMeta.id)
+      if (canvas) {
+        setActiveCanvas(canvas)
+        setView('canvas')
+      }
+      refreshData()
+    } catch (err) {
+      console.error('Failed to duplicate canvas:', err)
+    }
+  }, [refreshData])
 
   const renameCanvas = useCallback(async (id: string, newTitle: string) => {
     try {
@@ -151,6 +165,7 @@ export default function App() {
         onGoHome={goHome}
         onDeleteCanvas={deleteCanvas}
         onRenameCanvas={renameCanvas}
+        onDuplicateCanvas={duplicateCanvas}
       />
 
       {/* Main content */}
