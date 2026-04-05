@@ -5,7 +5,6 @@ import { Sidebar } from '@/components/Sidebar'
 import { storage } from '@/lib/storage'
 import { toDateString, getWeekDays, nextWeek, prevWeek, parseISO } from '@/lib/dates'
 import type { CanvasData } from '@/types/canvas'
-import { Button } from '@/components/ui/button'
 import { Settings } from '@/components/Settings'
 import { NewCanvasDialog } from '@/components/NewCanvasDialog'
 import { SearchBar } from '@/components/SearchBar'
@@ -40,16 +39,6 @@ export default function App() {
     }
   }, [selectedDate])
 
-  // Listen for canvas-navigate events from CanvasLink shapes
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { canvasId } = (e as CustomEvent).detail
-      openCanvas(canvasId)
-    }
-    window.addEventListener('canvas-navigate', handler)
-    return () => window.removeEventListener('canvas-navigate', handler)
-  }, [openCanvas])
-
   useEffect(() => {
     refreshData()
   }, [refreshData])
@@ -77,6 +66,16 @@ export default function App() {
       console.error('Failed to open canvas:', err)
     }
   }, [])
+
+  // Listen for canvas-navigate events from CanvasLink shapes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { canvasId } = (e as CustomEvent).detail
+      openCanvas(canvasId)
+    }
+    window.addEventListener('canvas-navigate', handler)
+    return () => window.removeEventListener('canvas-navigate', handler)
+  }, [openCanvas])
 
   const createCanvas = useCallback(async (title: string, type: 'project' | 'topic', tags: string[] = []) => {
     try {
